@@ -86,14 +86,23 @@ namespace GVFS.FunctionalTests.Tools
             ProcessResult expectedResult = GitProcess.InvokeProcess(controlRepoRoot, command);
             ProcessResult actualResult = GitHelpers.InvokeGitAgainstGVFSRepo(gvfsRepoRoot, command);
 
-            ErrorsShouldMatch(command, expectedResult, actualResult);
-            actualResult.Output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .ShouldMatchInOrder(expectedResult.Output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries), LinesAreEqual, command + " Output Lines");
+            ValidateGitOutput(command, expectedResult, actualResult);
 
             if (command != "status")
             {
                 ValidateGitCommand(enlistment, controlGitRepo, "status");
             }
+        }
+
+        public static void ValidateGitOutput(string command, ProcessResult expectedResult, ProcessResult actualResult, bool validateStdErr = true)
+        {
+            if (validateStdErr)
+            {
+                ErrorsShouldMatch(command, expectedResult, actualResult);
+            }
+
+            actualResult.Output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .ShouldMatchInOrder(expectedResult.Output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries), LinesAreEqual, command + " Output Lines");
         }
 
         /// <summary>
