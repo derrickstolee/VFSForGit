@@ -14,6 +14,7 @@ fi
 
 INSTALLROOT=$VFS_OUTPUTDIR/"InstallerRoot"
 VFSFORGITDESTINATION="usr/local/vfsforgit"
+KEXTDESTINATION="$VFSFORGITDESTINATION"
 INSTALLERPACKAGENAME="VFSForGit.$PACKAGEVERSION"
 INSTALLERPACKAGEID="com.vfsforgit.pkg"
 
@@ -28,7 +29,6 @@ function CheckBuildIsAvailable()
 function SetPermissions()
 {
     chmodCommand="chmod -R 755 \"${INSTALLROOT}\""
-    echo $chmodCommand
     eval $chmodCommand || exit 1
 }
  
@@ -36,8 +36,11 @@ function CreateInstallerRoot()
 {
     mkdirVfsForGit="mkdir -p \"${INSTALLROOT}/$VFSFORGITDESTINATION\""
     eval $mkdirVfsForGit || exit 1
-    
+
     mkdirBin="mkdir -p \"${INSTALLROOT}/usr/local/bin\""
+    eval $mkdirBin || exit 1
+
+    mkdirBin="mkdir -p \"${INSTALLROOT}/$KEXTDESTINATION\""
     eval $mkdirBin || exit 1
 }
 
@@ -52,7 +55,13 @@ function CopyBinariesToInstall()
     removeDataDirectory="rm -Rf \"${INSTALLROOT}/${VFSFORGITDESTINATION}/Data\""
     eval $removeDataDirectory || exit 1
     
-    copyKext="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/* \"${INSTALLROOT}/${VFSFORGITDESTINATION}/.\""
+    copyNative="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/*.dylib \"${INSTALLROOT}/${VFSFORGITDESTINATION}/.\""
+    eval $copyNative || exit 1
+    
+    copyNative="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/prjfs-log \"${INSTALLROOT}/${VFSFORGITDESTINATION}/.\""
+    eval $copyNative || exit 1
+    
+    copyKext="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/PrjFSKext.kext \"${INSTALLROOT}/${KEXTDESTINATION}/.\""
     eval $copyKext || exit 1
     
     currentDirectory=`pwd`
@@ -64,24 +73,8 @@ function CopyBinariesToInstall()
 
 function CreateInstaller()
 {
-    pkgRootDirectory="${VFS_OUTPUTDIR}/$INSTALLERPACKAGENAME"
-    createPkgRootCommand="mkdir -p \"${pkgRootDirectory}\""
-    eval $createPkgRootCommand || exit 1
-    
-    pkgBuildCommand="/usr/bin/pkgbuild --identifier $INSTALLERPACKAGEID --root \"${INSTALLROOT}\" \"${pkgRootDirectory}\"/$INSTALLERPACKAGENAME.pkg"
+    pkgBuildCommand="/usr/bin/pkgbuild --identifier $INSTALLERPACKAGEID --root \"${INSTALLROOT}\" \"${VFS_OUTPUTDIR}\"/$INSTALLERPACKAGENAME.pkg"
     eval $pkgBuildCommand || exit 1
-    
-    copyCommandLineInstaller="/bin/cp ${VFS_SCRIPTDIR}/Install_GVFS.command \"${pkgRootDirectory}\"/."
-    eval $copyCommandLineInstaller || exit 1
-}
-
-function CreateDiskImage
-{    
-    dmgBuildCommand="/usr/bin/hdiutil create \"${VFS_OUTPUTDIR}\"/$INSTALLERPACKAGENAME.dmg -ov -srcfolder \"${VFS_OUTPUTDIR}/$INSTALLERPACKAGENAME\""
-    eval $dmgBuildCommand || exit 1
-    
-    deleteDmgRoot="rm -Rf \"${VFS_OUTPUTDIR}/$INSTALLERPACKAGENAME\""
-    eval $deleteDmgRoot 
 }
 
 CheckBuildIsAvailable
@@ -93,6 +86,4 @@ CopyBinariesToInstall
 SetPermissions
 
 CreateInstaller
-
-CreateDiskImage
 
