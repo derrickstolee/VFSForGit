@@ -50,3 +50,7 @@ $VFS_SCRIPTDIR/PublishGit.sh $GITPATH || exit 1
 
 echo 'Running VFS for Git unit tests...'
 $VFS_PUBLISHDIR/GVFS.UnitTests || exit 1
+
+echo 'Creating installer package...'
+$VFS_SCRIPTDIR/BuildInstaller.sh || exit 1
+
