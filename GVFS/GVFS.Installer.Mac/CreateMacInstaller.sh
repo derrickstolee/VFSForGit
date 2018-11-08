@@ -2,12 +2,14 @@
 
 CONFIGURATION=$1
 if [ -z $CONFIGURATION ]; then
-  CONFIGURATION=Debug
+  echo "Build configuration not specified"
+  exit 1
 fi
 
 PACKAGEVERSION=$2
 if [ -z $PACKAGEVERSION ]; then
-  PACKAGEVERSION="0.0.0.1"
+  echo "Installer package version not specified"
+  exit 1
 fi
 
 BUILDOUTPUTDIR=$3
@@ -18,7 +20,7 @@ fi
 
 STAGINGDIR=$BUILDOUTPUTDIR"Staging"
 VFSFORGITDESTINATION="usr/local/vfsforgit"
-KEXTDESTINATION="/Library/Extensions"
+PRJFSDESTINATION="usr/local/vfsforgit/prjfs"
 INSTALLERPACKAGENAME="VFSForGit.$PACKAGEVERSION"
 INSTALLERPACKAGEID="com.vfsforgit.pkg"
 
@@ -44,7 +46,7 @@ function CreateInstallerRoot()
     mkdirBin="mkdir -p \"${STAGINGDIR}/usr/local/bin\""
     eval $mkdirBin || exit 1
 
-    mkdirBin="mkdir -p \"${STAGINGDIR}/$KEXTDESTINATION\""
+    mkdirBin="mkdir -p \"${STAGINGDIR}/$PRJFSDESTINATION\""
     eval $mkdirBin || exit 1
 }
 
@@ -59,14 +61,14 @@ function CopyBinariesToInstall()
     removeDataDirectory="rm -Rf \"${STAGINGDIR}/${VFSFORGITDESTINATION}/Data\""
     eval $removeDataDirectory || exit 1
     
-    copyNative="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/*.dylib \"${STAGINGDIR}/${VFSFORGITDESTINATION}/.\""
-    eval $copyNative || exit 1
+    copyPrjFS="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/*.dylib \"${STAGINGDIR}/${PRJFSDESTINATION}/.\""
+    eval $copyPrjFS || exit 1
     
-    copyNative="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/prjfs-log \"${STAGINGDIR}/${VFSFORGITDESTINATION}/.\""
-    eval $copyNative || exit 1
+    copyPrjFS="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/prjfs-log \"${STAGINGDIR}/${PRJFSDESTINATION}/.\""
+    eval $copyPrjFS || exit 1
     
-    copyKext="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/PrjFSKext.kext \"${STAGINGDIR}/${KEXTDESTINATION}/.\""
-    eval $copyKext || exit 1
+    copyPrjFS="cp -Rf \"${VFS_OUTPUTDIR}/ProjFS.Mac/Native/Build/Products/$CONFIGURATION\"/PrjFSKext.kext \"${STAGINGDIR}/${PRJFSDESTINATION}/.\""
+    eval $copyPrjFS || exit 1
     
     currentDirectory=`pwd`
     cd "${STAGINGDIR}/usr/local/bin"
