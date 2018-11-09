@@ -83,12 +83,6 @@ function CreateInstaller()
     eval $pkgBuildCommand || exit 1
 }
 
-function DeleteStaging()
-{
-    rmCommand="/bin/rm -Rf \"${STAGINGDIR}\""
-    eval $rmCommand || exit 1
-}
-
 function Run()
 {
     CheckBuildIsAvailable
@@ -96,7 +90,6 @@ function Run()
     CopyBinariesToInstall
     SetPermissions
     CreateInstaller
-    DeleteStaging
 }
 
 Run
