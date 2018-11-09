@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.NET.Sdk">
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <Import Project="..\GVFS.Build\GVFS.cs.props" />
+  
   <PropertyGroup>
     <AssemblyName>GVFS.Installer.Mac</AssemblyName>
     <RootNamespace>GVFS.Installer.Mac</RootNamespace>
@@ -12,21 +14,22 @@
     
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Version>$(GVFSVersion)</Version>
-    <NoWarn>2008</NoWarn>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Version>$(GVFSVersion)</Version>
-    <NoWarn>2008</NoWarn>
   </PropertyGroup>
+  
+  <!-- Reference: https://stackoverflow.com/questions/47179705/net-core-override-default-build-targets -->
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  
+  <Target Name="Build" />
+  <Target Name="Rebuild" />
+  <Target Name="Publish" />
   
   <Target Name="DeleteInstaller" AfterTargets="Clean">
     <Message Text="Deleting $(TargetDir).." Importance="high"></Message>
     <RemoveDir Directories="$(TargetDir).." />
-  </Target>
-  
-  <Target Name="AfterCopyFiles" AfterTargets="CopyFilesToOutputDirectory">
-        <Exec Command="/bin/rm -Rf $(TargetDir)*" />
   </Target>
   
   <Target Name="AfterAllPublishing" AfterTargets="Publish">
