@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project>
-  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\GVFS.Build\GVFS.cs.props" />
   
   <PropertyGroup>
@@ -28,10 +27,10 @@
   <Target Name="Publish" />
   
   <Target Name="DeleteInstaller" AfterTargets="Clean">
-    <Message Text="Deleting $(TargetDir).." Importance="high"></Message>
-    <RemoveDir Directories="$(TargetDir).." />
+    <Message Text="Deleting $(TargetDir)" Importance="high"></Message>
+    <RemoveDir Directories="$(TargetDir)" />
   </Target>
-  
+
   <Target Name="AfterAllPublishing" AfterTargets="Publish">
     <Message Text="$(ProjectDir)/CreateMacInstaller.sh $(Configuration) $(GVFSVersion) $(OutputPath)" Importance="high"></Message>
     <Exec Command="$(ProjectDir)/CreateMacInstaller.sh $(Configuration) $(GVFSVersion) $(OutputPath)" />
