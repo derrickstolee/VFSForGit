@@ -1,70 +1,111 @@
-﻿using GVFS.Common.FileSystem;
-using GVFS.Common.Git;
-using GVFS.Common.NamedPipes;
+﻿using GVFS.Common.Git;
 using GVFS.Common.Tracing;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace GVFS.Common.Prefetch
+namespace GVFS.Common.Actions
 {
-    public static class CommitPrefetcher
+    public class PrefetchAction : IAction
     {
         private const int IoFailureRetryDelayMS = 50;
         private const int LockWaitTimeMs = 100;
         private const int WaitingOnLockLogThreshold = 50;
         private const string PrefetchCommitsAndTreesLock = "prefetch-commits-trees.lock";
+        private readonly TimeSpan timeBetweenPrefetches = TimeSpan.FromMinutes(70);
+        private ActionContext context;
+        private bool stopping;
 
-        public static bool TryPrefetchCommitsAndTrees(
-            ITracer tracer,
-            GVFSEnlistment enlistment,
-            PhysicalFileSystem fileSystem,
-            GitObjects gitObjects,
-            out string error)
+        public PrefetchAction(ActionContext context)
         {
-            List<string> packIndexes;
+            this.context = context;
+        }
+
+        public string TelemetryKey => nameof(PrefetchAction);
+
+        public void Execute()
+        {
+            this.TryPrefetchCommitsAndTrees(out string error);
+        }
+
+        public bool TryPrefetchCommitsAndTrees(out string error)
+        {
             using (FileBasedLock prefetchLock = GVFSPlatform.Instance.CreateFileBasedLock(
-                fileSystem,
-                tracer,
-                Path.Combine(enlistment.GitPackRoot, PrefetchCommitsAndTreesLock)))
+                    this.context.FileSystem,
+                    this.context.Tracer,
+                    Path.Combine(this.context.Enlistment.GitPackRoot, PrefetchCommitsAndTreesLock)))
             {
-                WaitUntilLockIsAcquired(tracer, prefetchLock);
+                if (!this.WaitUntilLockIsAcquired(prefetchLock))
+                {
+                    error = "Unable to acquire prefetch lock";
+                    return false;
+                }
+
                 long maxGoodTimeStamp;
 
-                gitObjects.DeleteStaleTempPrefetchPackAndIdxs();
+                // TODO: these actions are not interruptible! We need them to halt on a Stop().
 
-                if (!TryGetMaxGoodPrefetchTimestamp(tracer, enlistment, fileSystem, gitObjects, out maxGoodTimeStamp, out error))
+                this.context.GitObjects.DeleteStaleTempPrefetchPackAndIdxs();
+
+                if (!this.TryGetMaxGoodPrefetchTimestamp(out maxGoodTimeStamp, out error))
                 {
                     return false;
                 }
 
-                if (!gitObjects.TryDownloadPrefetchPacks(maxGoodTimeStamp, out packIndexes))
+                if (!this.context.GitObjects.TryDownloadPrefetchPacks(maxGoodTimeStamp, out List<string> packIndexes))
                 {
-                    error = "Failed to download prefetch packs";
                     return false;
                 }
-            }
-
-            if (packIndexes?.Count > 0)
-            {
-                TrySchedulePostFetchJob(tracer, enlistment.NamedPipeName, packIndexes);
             }
 
             return true;
         }
 
-        public static bool TryGetMaxGoodPrefetchTimestamp(
-            ITracer tracer,
-            GVFSEnlistment enlistment,
-            PhysicalFileSystem fileSystem,
-            GitObjects gitObjects,
+        public bool IsReady(DateTime now)
+        {
+            long last;
+            string error;
+
+            if (!this.context.GitObjects.IsUsingCacheServer())
+            {
+                // We don't prefetch in the background when not using a cache server, as that
+                // can overload the central server. Instead, rely on the prefetch verb (run as
+                // part of 'git fetch').
+                return false;
+            }
+
+            // TODO: Even this timestamp check needs to be able to be halted.
+
+            if (!this.TryGetMaxGoodPrefetchTimestamp(out last, out error))
+            {
+                this.context.Tracer.RelatedError(error);
+                return false;
+            }
+
+            DateTime lastDateTime = EpochConverter.FromUnixEpochSeconds(last);
+
+            return now <= lastDateTime + this.timeBetweenPrefetches;
+        }
+
+        public void Stop()
+        {
+            this.stopping = true;
+
+            // TODO: How to halt the Git activity during a prefetch?
+        }
+
+        public bool TryGetMaxGoodPrefetchTimestamp(
             out long maxGoodTimestamp,
             out string error)
         {
-            fileSystem.CreateDirectory(enlistment.GitPackRoot);
+            this.context.FileSystem.CreateDirectory(this.context.Enlistment.GitPackRoot);
 
-            string[] packs = gitObjects.ReadPackFileNames(enlistment.GitPackRoot, GVFSConstants.PrefetchPackPrefix);
+            string[] packs = this.context.GitObjects.ReadPackFileNames(
+                                this.context.Enlistment.GitPackRoot,
+                                GVFSConstants.PrefetchPackPrefix);
+
             List<PrefetchPackInfo> orderedPacks = packs
                 .Where(pack => GetTimestamp(pack).HasValue)
                 .Select(pack => new PrefetchPackInfo(GetTimestamp(pack).Value, pack))
@@ -79,19 +120,19 @@ namespace GVFS.Common.Prefetch
                 long timestamp = orderedPacks[i].Timestamp;
                 string packPath = orderedPacks[i].Path;
                 string idxPath = Path.ChangeExtension(packPath, ".idx");
-                if (!fileSystem.FileExists(idxPath))
+                if (!this.context.FileSystem.FileExists(idxPath))
                 {
                     EventMetadata metadata = new EventMetadata();
                     metadata.Add("pack", packPath);
                     metadata.Add("idxPath", idxPath);
                     metadata.Add("timestamp", timestamp);
-                    GitProcess.Result indexResult = gitObjects.IndexPackFile(packPath);
+                    GitProcess.Result indexResult = this.context.GitObjects.IndexPackFile(packPath);
                     if (indexResult.HasErrors)
                     {
                         firstBadPack = i;
 
                         metadata.Add("Errors", indexResult.Errors);
-                        tracer.RelatedWarning(metadata, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}: Found pack file that's missing idx file, and failed to regenerate idx");
+                        this.context.Tracer.RelatedWarning(metadata, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}: Found pack file that's missing idx file, and failed to regenerate idx");
                         break;
                     }
                     else
@@ -99,7 +140,7 @@ namespace GVFS.Common.Prefetch
                         maxGoodTimestamp = timestamp;
 
                         metadata.Add(TracingConstants.MessageKey.InfoMessage, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}: Found pack file that's missing idx file, and regenerated idx");
-                        tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_RebuildIdx", metadata);
+                        this.context.Tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_RebuildIdx", metadata);
                     }
                 }
                 else
@@ -117,11 +158,11 @@ namespace GVFS.Common.Prefetch
                 // may refer to those packs.
 
                 EventMetadata metadata = new EventMetadata();
-                string midxPath = Path.Combine(enlistment.GitPackRoot, "multi-pack-index");
+                string midxPath = Path.Combine(this.context.Enlistment.GitPackRoot, "multi-pack-index");
                 metadata.Add("path", midxPath);
                 metadata.Add(TracingConstants.MessageKey.InfoMessage, $"{nameof(TryGetMaxGoodPrefetchTimestamp)} deleting multi-pack-index");
-                tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_DeleteMultiPack_index", metadata);
-                if (!fileSystem.TryWaitForDelete(tracer, midxPath, IoFailureRetryDelayMS, MaxDeleteRetries, RetryLoggingThreshold))
+                this.context.Tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_DeleteMultiPack_index", metadata);
+                if (!this.context.FileSystem.TryWaitForDelete(this.context.Tracer, midxPath, IoFailureRetryDelayMS, MaxDeleteRetries, RetryLoggingThreshold))
                 {
                     error = $"Unable to delete {midxPath}";
                     return false;
@@ -137,8 +178,8 @@ namespace GVFS.Common.Prefetch
                     metadata = new EventMetadata();
                     metadata.Add("path", idxPath);
                     metadata.Add(TracingConstants.MessageKey.InfoMessage, $"{nameof(TryGetMaxGoodPrefetchTimestamp)} deleting bad idx file");
-                    tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_DeleteBadIdx", metadata);
-                    if (!fileSystem.TryWaitForDelete(tracer, idxPath, IoFailureRetryDelayMS, MaxDeleteRetries, RetryLoggingThreshold))
+                    this.context.Tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_DeleteBadIdx", metadata);
+                    if (!this.context.FileSystem.TryWaitForDelete(this.context.Tracer, idxPath, IoFailureRetryDelayMS, MaxDeleteRetries, RetryLoggingThreshold))
                     {
                         error = $"Unable to delete {idxPath}";
                         return false;
@@ -147,8 +188,8 @@ namespace GVFS.Common.Prefetch
                     metadata = new EventMetadata();
                     metadata.Add("path", packPath);
                     metadata.Add(TracingConstants.MessageKey.InfoMessage, $"{nameof(TryGetMaxGoodPrefetchTimestamp)} deleting bad pack file");
-                    tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_DeleteBadPack", metadata);
-                    if (!fileSystem.TryWaitForDelete(tracer, packPath, IoFailureRetryDelayMS, MaxDeleteRetries, RetryLoggingThreshold))
+                    this.context.Tracer.RelatedEvent(EventLevel.Informational, $"{nameof(TryGetMaxGoodPrefetchTimestamp)}_DeleteBadPack", metadata);
+                    if (!this.context.FileSystem.TryWaitForDelete(this.context.Tracer, packPath, IoFailureRetryDelayMS, MaxDeleteRetries, RetryLoggingThreshold))
                     {
                         error = $"Unable to delete {packPath}";
                         return false;
@@ -158,50 +199,6 @@ namespace GVFS.Common.Prefetch
 
             error = null;
             return true;
-        }
-
-        private static bool TrySchedulePostFetchJob(ITracer tracer, string namedPipeName, List<string> packIndexes)
-        {
-            // We make a best-effort request to run MIDX and commit-graph writes
-            using (NamedPipeClient pipeClient = new NamedPipeClient(namedPipeName))
-            {
-                if (!pipeClient.Connect())
-                {
-                    tracer.RelatedWarning(
-                        metadata: null,
-                        message: "Failed to connect to GVFS.Mount process. Skipping post-fetch job request.",
-                        keywords: Keywords.Telemetry);
-                    return false;
-                }
-
-                NamedPipeMessages.RunPostFetchJob.Request request = new NamedPipeMessages.RunPostFetchJob.Request(packIndexes);
-                if (pipeClient.TrySendRequest(request.CreateMessage()))
-                {
-                    NamedPipeMessages.Message response;
-
-                    if (pipeClient.TryReadResponse(out response))
-                    {
-                        tracer.RelatedInfo("Requested post-fetch job with resonse '{0}'", response.Header);
-                        return true;
-                    }
-                    else
-                    {
-                        tracer.RelatedWarning(
-                            metadata: null,
-                            message: "Requested post-fetch job failed to respond",
-                            keywords: Keywords.Telemetry);
-                    }
-                }
-                else
-                {
-                    tracer.RelatedWarning(
-                        metadata: null,
-                        message: "Message to named pipe failed to send, skipping post-fetch job request.",
-                        keywords: Keywords.Telemetry);
-                }
-            }
-
-            return false;
         }
 
         private static long? GetTimestamp(string packName)
@@ -222,19 +219,26 @@ namespace GVFS.Common.Prefetch
             return null;
         }
 
-        private static void WaitUntilLockIsAcquired(ITracer tracer, FileBasedLock fileBasedLock)
+        private bool WaitUntilLockIsAcquired(FileBasedLock fileBasedLock)
         {
             int attempt = 0;
-            while (!fileBasedLock.TryAcquireLock())
+            while (!this.stopping)
             {
+                if (fileBasedLock.TryAcquireLock())
+                {
+                    return true;
+                }
+
                 Thread.Sleep(LockWaitTimeMs);
                 ++attempt;
                 if (attempt == WaitingOnLockLogThreshold)
                 {
                     attempt = 0;
-                    tracer.RelatedInfo("WaitUntilLockIsAcquired: Waiting to acquire prefetch lock");
+                    this.context.Tracer.RelatedInfo("WaitUntilLockIsAcquired: Waiting to acquire prefetch lock");
                 }
             }
+
+            return false;
         }
 
         private class PrefetchPackInfo

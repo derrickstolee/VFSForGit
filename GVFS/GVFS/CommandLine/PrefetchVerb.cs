@@ -1,5 +1,6 @@
 ﻿using CommandLine;
 using GVFS.Common;
+using GVFS.Common.Actions;
 using GVFS.Common.FileSystem;
 using GVFS.Common.Git;
 using GVFS.Common.Http;
@@ -209,20 +210,33 @@ namespace GVFS.CommandLine
             GVFSContext context = new GVFSContext(tracer, fileSystem, repo, enlistment);
             GitObjects gitObjects = new GVFSGitObjects(context, objectRequestor);
 
+            ActionContext actionContext = new ActionContext(tracer, enlistment, fileSystem, gitObjects);
+
+            PrefetchAction prefetchAction = new PrefetchAction(actionContext);
+
             if (this.Verbose)
             {
-                success = CommitPrefetcher.TryPrefetchCommitsAndTrees(tracer, enlistment, fileSystem, gitObjects, out error);
+                success = prefetchAction.TryPrefetchCommitsAndTrees(out error);
             }
             else
             {
                 success = this.ShowStatusWhileRunning(
-                    () => CommitPrefetcher.TryPrefetchCommitsAndTrees(tracer, enlistment, fileSystem, gitObjects, out error),
+                    () => prefetchAction.TryPrefetchCommitsAndTrees(out error),
                     "Fetching commits and trees " + this.GetCacheServerDisplay(cacheServer, enlistment.RepoUrl));
             }
 
             if (!success)
             {
                 this.ReportErrorAndExit(tracer, "Prefetching commits and trees failed: " + error);
+                return;
+            }
+
+            if (this.Unattended)
+            {
+                // We don't run these maintenance actions in the background in unattended mode,
+                // so promote them to foreground actions.
+                new WriteMultiPackIndexAction(actionContext).Execute();
+                new WriteCommitGraphAction(actionContext).Execute();
             }
         }
 

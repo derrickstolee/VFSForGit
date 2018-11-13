@@ -1,16 +1,14 @@
 ﻿using GVFS.Common;
+using GVFS.Common.Actions;
 using GVFS.Common.FileSystem;
 using GVFS.Common.Git;
 using GVFS.Common.Http;
 using GVFS.Common.NamedPipes;
-using GVFS.Common.Prefetch;
 using GVFS.Common.Tracing;
 using GVFS.PlatformLoader;
 using GVFS.Virtualization;
 using GVFS.Virtualization.FileSystem;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -29,7 +27,7 @@ namespace GVFS.Mount
         private FileSystemCallbacks fileSystemCallbacks;
         private GVFSEnlistment enlistment;
         private ITracer tracer;
-        private BackgroundPrefetcher prefetcher;
+        private ActionRunner actionRunner;
 
         private CacheServerInfo cacheServer;
         private RetryConfig retryConfig;
@@ -254,10 +252,6 @@ namespace GVFS.Mount
                     this.HandleModifiedPathsListRequest(message, connection);
                     break;
 
-                case NamedPipeMessages.RunPostFetchJob.PostFetchJob:
-                    this.HandlePostFetchJobRequest(message, connection);
-                    break;
-
                 default:
                     EventMetadata metadata = new EventMetadata();
                     metadata.Add("Area", "Mount");
@@ -404,28 +398,6 @@ namespace GVFS.Mount
             connection.TrySendResponse(response.CreateMessage());
         }
 
-        private void HandlePostFetchJobRequest(NamedPipeMessages.Message message, NamedPipeServer.Connection connection)
-        {
-            NamedPipeMessages.RunPostFetchJob.Request request = new NamedPipeMessages.RunPostFetchJob.Request(message);
-
-            this.tracer.RelatedInfo("Received post-fetch job request with body {0}", message.Body);
-
-            NamedPipeMessages.RunPostFetchJob.Response response;
-            if (this.currentState == MountState.Ready)
-            {
-                List<string> packIndexes = JsonConvert.DeserializeObject<List<string>>(message.Body);
-                this.fileSystemCallbacks.LaunchPostFetchJob(packIndexes);
-
-                response = new NamedPipeMessages.RunPostFetchJob.Response(NamedPipeMessages.RunPostFetchJob.QueuedResult);
-            }
-            else
-            {
-                response = new NamedPipeMessages.RunPostFetchJob.Response(NamedPipeMessages.RunPostFetchJob.MountNotReadyResult);
-            }
-
-            connection.TrySendResponse(response.CreateMessage());
-        }
-
         private void HandleGetStatusRequest(NamedPipeServer.Connection connection)
         {
             NamedPipeMessages.GetStatus.Response response = new NamedPipeMessages.GetStatus.Response();
@@ -516,7 +488,13 @@ namespace GVFS.Mount
             }
 
             this.fileSystemCallbacks = this.CreateOrReportAndExit(() => new FileSystemCallbacks(this.context, this.gitObjects, RepoMetadata.Instance, virtualizer, gitStatusCache), "Failed to create src folder callback listener");
-            this.prefetcher = this.CreateOrReportAndExit(() => new BackgroundPrefetcher(this.tracer, this.enlistment, this.context.FileSystem, this.gitObjects), "Failed to start background prefetcher");
+
+            if (!GVFSEnlistment.IsUnattended(this.tracer))
+            {
+                this.actionRunner = this.CreateOrReportAndExit(
+                        () => new ActionRunner(this.tracer, this.enlistment, this.context.FileSystem, this.gitObjects),
+                        "Failed to start " + nameof(ActionRunner));
+            }
 
             int majorVersion;
             int minorVersion;
@@ -547,17 +525,14 @@ namespace GVFS.Mount
 
             this.heartbeat = new HeartbeatThread(this.tracer, this.fileSystemCallbacks);
             this.heartbeat.Start();
-
-            // Launch a background job to compute the multi-pack-index. Will do nothing if up-to-date.
-            this.fileSystemCallbacks.LaunchPostFetchJob(packIndexes: new List<string>());
         }
 
         private void UnmountAndStopWorkingDirectoryCallbacks()
         {
-            if (this.prefetcher != null)
+            if (this.actionRunner != null)
             {
-                this.prefetcher.Dispose();
-                this.prefetcher = null;
+                this.actionRunner.Dispose();
+                this.actionRunner = null;
             }
 
             if (this.heartbeat != null)

@@ -137,53 +137,6 @@ namespace GVFS.Common.NamedPipes
             }
         }
 
-        public static class RunPostFetchJob
-        {
-            public const string PostFetchJob = "PostFetch";
-            public const string QueuedResult = "Queued";
-            public const string MountNotReadyResult = "MountNotReady";
-
-            public class Request
-            {
-                public Request(List<string> packIndexes)
-                {
-                    this.PackIndexList = JsonConvert.SerializeObject(packIndexes);
-                }
-
-                public Request(Message message)
-                {
-                    this.PackIndexList = message.Body;
-                }
-
-                /// <summary>
-                /// The PackIndexList data is a JSON-formatted list of strings,
-                /// where each string is the name of an IDX file in the shared
-                /// object cache.
-                /// </summary>
-                public string PackIndexList { get; set; }
-
-                public Message CreateMessage()
-                {
-                    return new Message(PostFetchJob, this.PackIndexList);
-                }
-            }
-
-            public class Response
-            {
-                public Response(string result)
-                {
-                    this.Result = result;
-                }
-
-                public string Result { get; }
-
-                public Message CreateMessage()
-                {
-                    return new Message(this.Result, null);
-                }
-            }
-        }
-
         public static class Notification
         {
             public class Request
