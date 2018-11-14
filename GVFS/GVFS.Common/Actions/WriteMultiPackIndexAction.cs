@@ -1,5 +1,4 @@
-﻿using GVFS.Common.FileSystem;
-using System;
+﻿using System;
 using System.IO;
 
 namespace GVFS.Common.Actions
