@@ -49,7 +49,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
         public void PrefetchCommitsToEmptyCache()
         {
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             // Verify prefetch pack(s) are in packs folder and have matching idx file
             string[] prefetchPacks = this.ReadPrefetchPackFileNames();
@@ -73,7 +72,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 
             // Prefetch should rebuild the missing idx
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             idxPath.ShouldBeAFile(this.fileSystem);
 
@@ -98,7 +96,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 
             // Prefetch should delete the bad pack
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             badPackPath.ShouldNotExistOnDisk(this.fileSystem);
 
@@ -123,7 +120,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 
             // Prefetch should delete the bad pack and all packs after it
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             badPackPath.ShouldNotExistOnDisk(this.fileSystem);
             foreach (string packPath in prefetchPacks)
@@ -159,7 +155,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 
             // After handle is closed prefetch should succeed
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             badPackPath.ShouldNotExistOnDisk(this.fileSystem);
 
@@ -190,7 +185,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 
             // After handle is closed prefetch should succeed
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             // The bad pack and all packs newer than it should not be on disk
             badPackPath.ShouldNotExistOnDisk(this.fileSystem);
@@ -225,7 +219,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 
             // After handle is closed prefetch should succeed
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             // The bad pack and all packs newer than it should not be on disk
             badPackPath.ShouldNotExistOnDisk(this.fileSystem);
@@ -266,7 +259,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
             otherFilePath.ShouldBeAFile(this.fileSystem).WithContents(otherFileContents);
 
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             // Validate stale prefetch packs are cleaned up
             Directory.GetFiles(this.TempPackRoot, $"{PrefetchPackPrefix}*.pack").ShouldBeEmpty("There should be no .pack files in the tempPack folder");
@@ -296,7 +288,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
             this.fileSystem.CreateEmptyFile(midxLockPath);
 
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
 
             this.fileSystem.FileExists(graphLockPath).ShouldBeFalse();
             this.fileSystem.FileExists(midxLockPath).ShouldBeFalse();
@@ -372,24 +363,6 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 
             oldestPackTimestamp.ShouldBeAtMost(long.MaxValue - 1, "Failed to find the oldest pack");
             return oldestPackTimestamp;
-        }
-
-        private void PostFetchJobShouldComplete()
-        {
-            string objectDir = this.Enlistment.GetObjectRoot(this.fileSystem);
-            string postFetchLock = Path.Combine(objectDir, "post-fetch.lock");
-
-            while (this.fileSystem.FileExists(postFetchLock))
-            {
-                Thread.Sleep(500);
-            }
-
-            ProcessResult midxResult = GitProcess.InvokeProcess(this.Enlistment.RepoRoot, "multi-pack-index verify --object-dir=\"" + objectDir + "\"");
-            midxResult.ExitCode.ShouldEqual(0);
-
-            ProcessResult graphResult = GitProcess.InvokeProcess(this.Enlistment.RepoRoot, "commit-graph read --object-dir=\"" + objectDir + "\"");
-            graphResult.ExitCode.ShouldEqual(0);
-            graphResult.Output.ShouldContain("43475048"); // Header from commit-graph file.
         }
     }
 }

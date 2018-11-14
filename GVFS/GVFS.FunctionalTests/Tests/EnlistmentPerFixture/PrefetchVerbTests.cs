@@ -1,10 +1,8 @@
 ﻿using GVFS.FunctionalTests.FileSystemRunners;
 using GVFS.FunctionalTests.Should;
-using GVFS.FunctionalTests.Tools;
 using GVFS.Tests.Should;
 using NUnit.Framework;
 using System.IO;
-using System.Threading;
 
 namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
 {
@@ -108,45 +106,18 @@ namespace GVFS.FunctionalTests.Tests.EnlistmentPerFixture
         public void PrefetchCleansUpStalePrefetchLock()
         {
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
             string prefetchCommitsLockFile = Path.Combine(this.Enlistment.GetObjectRoot(this.fileSystem), "pack", PrefetchCommitsAndTreesLock);
             prefetchCommitsLockFile.ShouldNotExistOnDisk(this.fileSystem);
             this.fileSystem.WriteAllText(prefetchCommitsLockFile, this.Enlistment.EnlistmentRoot);
             prefetchCommitsLockFile.ShouldBeAFile(this.fileSystem);
 
             this.Enlistment.Prefetch("--commits");
-            this.PostFetchJobShouldComplete();
             prefetchCommitsLockFile.ShouldNotExistOnDisk(this.fileSystem);
         }
 
         private void ExpectBlobCount(string output, int expectedCount)
         {
             output.ShouldContain("Matched blobs:    " + expectedCount);
-        }
-
-        private void PostFetchJobShouldComplete()
-        {
-            string objectDir = this.Enlistment.GetObjectRoot(this.fileSystem);
-            string postFetchLock = Path.Combine(objectDir, "post-fetch.lock");
-
-            // Wait first, to hopefully ensure the background thread has
-            // started before we check for the lock file.
-            do
-            {
-                Thread.Sleep(500);
-            }
-            while (this.fileSystem.FileExists(postFetchLock));
-
-            ProcessResult midxResult = GitProcess.InvokeProcess(this.Enlistment.RepoRoot, "multi-pack-index verify --object-dir=\"" + objectDir + "\"");
-            midxResult.ExitCode.ShouldEqual(0);
-
-            // A commit graph is not always generated, but if it is, then we want to ensure it is in a good state
-            if (this.fileSystem.FileExists(Path.Combine(objectDir, "info", "commit-graph")))
-            {
-                ProcessResult graphResult = GitProcess.InvokeProcess(this.Enlistment.RepoRoot, "commit-graph read --object-dir=\"" + objectDir + "\"");
-                graphResult.ExitCode.ShouldEqual(0);
-                graphResult.Output.ShouldContain("43475048"); // Header from commit-graph file.
-            }
         }
     }
 }
