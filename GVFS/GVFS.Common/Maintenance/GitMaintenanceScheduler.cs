@@ -74,7 +74,13 @@ namespace GVFS.Common.Maintenance
                 (state) => this.queue.TryEnqueue(new VerifyObjectStoreStep(this.context)),
                 state: null,
                 dueTime: this.verifyObjectsDueTime,
-                period: this.verifyObjectsPeriod);
+                period: this.verifyObjectsPeriod));
+
+            this.stepTimers.Add(new Timer(
+                (state) => this.queue.TryEnqueue(new LibGit2RepoPerfStep(this.context)),
+                state: null,
+                dueTime: TimeSpan.FromSeconds(10),
+                period: TimeSpan.FromSeconds(25)));
         }
     }
 }
