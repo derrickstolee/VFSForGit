@@ -225,6 +225,48 @@ namespace GVFS.Common.NamedPipes
             }
         }
 
+        public static class RunTest
+        {
+            public const string RunTestMessage = "RunTest";
+
+            public class Request
+            {
+                public Request(string testName)
+                {
+                    this.TestName = testName;
+                }
+
+                public Request(Message message)
+                {
+                    this.TestName = message.Body;
+                }
+
+                public string TestName { get; set; }
+
+                public Message CreateMessage()
+                {
+                    return new Message(RunTestMessage, this.TestName);
+                }
+            }
+
+            public class Response
+            {
+                public bool TestRan { get; set; }
+                public bool TestSucceeded { get; set; }
+                public string TestData { get; set; }
+
+                public static Response FromJson(string json)
+                {
+                    return JsonConvert.DeserializeObject<Response>(json);
+                }
+
+                public string ToJson()
+                {
+                    return JsonConvert.SerializeObject(this);
+                }
+            }
+        }
+
         public static class Notification
         {
             public class Request
