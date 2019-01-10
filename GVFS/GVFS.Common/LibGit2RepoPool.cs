@@ -16,8 +16,8 @@ namespace GVFS.Common
         private readonly ITracer tracer;
 
         private readonly Timer repoDisposalTimer;
-        private readonly TimeSpan repoDisposalDueTime = TimeSpan.FromMinutes(15);
-        private readonly TimeSpan repoDisposalPeriod = TimeSpan.FromMinutes(1);
+        private readonly TimeSpan repoDisposalDueTime = TimeSpan.FromSeconds(15);
+        private readonly TimeSpan repoDisposalPeriod = TimeSpan.FromSeconds(1);
         private volatile int numActiveRepos;
 
         public LibGit2RepoPool(

@@ -47,6 +47,8 @@ namespace GVFS.Common.Git
 
         public bool HasActiveLibGit2Repos => this.libgit2RepoPool != null && this.libgit2RepoPool.NumActiveRepos > 0;
 
+        public int NumActiveLibGit2Repos => this.libgit2RepoPool.NumActiveRepos;
+
         public GVFSLock GVFSLock
         {
             get;

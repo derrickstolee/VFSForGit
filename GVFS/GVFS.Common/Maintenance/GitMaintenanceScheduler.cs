@@ -66,6 +66,12 @@ namespace GVFS.Common.Maintenance
                 state: null,
                 dueTime: this.looseObjectsDueTime,
                 period: this.looseObjectsPeriod));
+
+            this.stepTimers.Add(new Timer(
+                (state) => this.queue.TryEnqueue(new LibGit2PoolPerformanceTestStep(this.context)),
+                state: null,
+                dueTime: TimeSpan.FromSeconds(15),
+                period: TimeSpan.FromMinutes(1)));
         }
     }
 }
