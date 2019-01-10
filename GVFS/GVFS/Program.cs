@@ -27,6 +27,7 @@ namespace GVFS
                 typeof(RepairVerb),
                 typeof(ServiceVerb),
                 typeof(StatusVerb),
+                typeof(TestVerb),
                 typeof(UnmountVerb),
                 typeof(UpgradeVerb),
             };

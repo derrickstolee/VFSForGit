@@ -20,11 +20,10 @@ namespace GVFS.Mount
     public class InProcessMount
     {
         // Tests show that 250 is the max supported pipe name length
-        private const int MaxPipeNameLength = 250;
-        private const int MutexMaxWaitTimeMS = 500;
         private const string ModifiedPathsVersion = "1";
 
         private readonly bool showDebugWindow;
+        private readonly bool testMode;
 
         private FileSystemCallbacks fileSystemCallbacks;
         private GVFSEnlistment enlistment;
@@ -42,7 +41,7 @@ namespace GVFS.Mount
         private HeartbeatThread heartbeat;
         private ManualResetEvent unmountEvent;
 
-        public InProcessMount(ITracer tracer, GVFSEnlistment enlistment, CacheServerInfo cacheServer, RetryConfig retryConfig, GitStatusCacheConfig gitStatusCacheConfig, bool showDebugWindow)
+        public InProcessMount(ITracer tracer, GVFSEnlistment enlistment, CacheServerInfo cacheServer, RetryConfig retryConfig, GitStatusCacheConfig gitStatusCacheConfig, bool showDebugWindow, bool testMode)
         {
             this.tracer = tracer;
             this.retryConfig = retryConfig;
@@ -50,6 +49,7 @@ namespace GVFS.Mount
             this.cacheServer = cacheServer;
             this.enlistment = enlistment;
             this.showDebugWindow = showDebugWindow;
+            this.testMode = testMode;
             this.unmountEvent = new ManualResetEvent(false);
         }
 
@@ -63,7 +63,7 @@ namespace GVFS.Mount
             MountFailed
         }
 
-        public void Mount(EventLevel verbosity, Keywords keywords)
+        public void Mount()
         {
             this.currentState = MountState.Mounting;
 
@@ -262,6 +262,10 @@ namespace GVFS.Mount
                     this.HandlePostFetchJobRequest(message, connection);
                     break;
 
+                case NamedPipeMessages.RunTest.RunTestMessage:
+                    this.HandleRunTestRequest(message, connection);
+                    break;
+
                 default:
                     EventMetadata metadata = new EventMetadata();
                     metadata.Add("Area", "Mount");
@@ -449,6 +453,31 @@ namespace GVFS.Mount
             }
 
             connection.TrySendResponse(response.CreateMessage());
+        }
+
+        private void HandleRunTestRequest(NamedPipeMessages.Message message, NamedPipeServer.Connection connection)
+        {
+            NamedPipeMessages.RunTest.Request request = new NamedPipeMessages.RunTest.Request(message);
+
+            this.tracer.RelatedInfo("Received RunTest request with body {0}", message.Body);
+
+            NamedPipeMessages.RunTest.Response response = new NamedPipeMessages.RunTest.Response();
+            if (this.currentState != MountState.Ready)
+            {
+                response.TestError = "Mount process not ready";
+            }
+            else if (!this.testMode)
+            {
+                response.TestError = "Mount process not in test mode";
+            }
+            else
+            {
+                // Run the test
+                response.TestRan = true;
+                response.TestSucceeded = false;
+            }
+
+            connection.TrySendResponse(response.ToJson());
         }
 
         private void HandleGetStatusRequest(NamedPipeServer.Connection connection)

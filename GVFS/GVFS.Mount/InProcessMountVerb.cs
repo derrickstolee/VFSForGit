@@ -55,6 +55,14 @@ namespace GVFS.Mount
             HelpText = "Service initiated mount.")]
         public string StartedByService { get; set; }
 
+        [Option(
+            't',
+            GVFSConstants.VerbParameters.Mount.TestMode,
+            Default = false,
+            Required = false,
+            HelpText = "Mount process for running functional and performance tests.")]
+        public bool TestMode { get; set; }
+
         [Value(
                 0,
                 Required = true,
@@ -89,6 +97,7 @@ namespace GVFS.Mount
                     { "IsElevated", GVFSPlatform.Instance.IsElevated() },
                     { nameof(this.EnlistmentRootPathParameter), this.EnlistmentRootPathParameter },
                     { nameof(this.StartedByService), this.StartedByService },
+                    { nameof(this.TestMode), this.TestMode },
                 });
 
             AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
@@ -110,11 +119,18 @@ namespace GVFS.Mount
                 gitStatusCacheConfig = GitStatusCacheConfig.DefaultConfig;
             }
 
-            InProcessMount mountHelper = new InProcessMount(tracer, enlistment, cacheServer, retryConfig, gitStatusCacheConfig, this.ShowDebugWindow);
+            InProcessMount mountHelper = new InProcessMount(
+                                                tracer,
+                                                enlistment,
+                                                cacheServer,
+                                                retryConfig,
+                                                gitStatusCacheConfig,
+                                                this.ShowDebugWindow,
+                                                this.TestMode);
 
             try
             {
-                mountHelper.Mount(verbosity, keywords);
+                mountHelper.Mount();
             }
             catch (Exception ex)
             {

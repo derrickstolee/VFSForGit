@@ -38,6 +38,12 @@ namespace GVFS.CommandLine
 
                     this.Output.WriteLine($"{nameof(runTestResponse.TestRan)}: {runTestResponse.TestRan}");
                     this.Output.WriteLine($"{nameof(runTestResponse.TestSucceeded)}: {runTestResponse.TestSucceeded}");
+
+                    if (runTestResponse.TestError != null)
+                    {
+                        this.Output.WriteLine($"{nameof(runTestResponse.TestError)}: {runTestResponse.TestError}");
+                    }
+
                     this.Output.WriteLine($"{nameof(runTestResponse.TestData)}: {runTestResponse.TestData}");
                 }
                 catch (BrokenPipeException e)

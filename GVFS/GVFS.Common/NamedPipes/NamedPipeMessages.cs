@@ -253,6 +253,7 @@ namespace GVFS.Common.NamedPipes
             {
                 public bool TestRan { get; set; }
                 public bool TestSucceeded { get; set; }
+                public string TestError { get; set; }
                 public string TestData { get; set; }
 
                 public static Response FromJson(string json)

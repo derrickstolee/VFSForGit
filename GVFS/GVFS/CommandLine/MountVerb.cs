@@ -9,7 +9,6 @@ using GVFS.DiskLayoutUpgrades;
 using GVFS.Virtualization.Projection;
 using System;
 using System.IO;
-using System.Security.Principal;
 
 namespace GVFS.CommandLine
 {
@@ -33,6 +32,13 @@ namespace GVFS.CommandLine
             Required = false,
             HelpText = "A CSV list of logging filter keywords. Accepts: Any, Network")]
         public string KeywordsCsv { get; set; }
+
+        [Option(
+            "test-mode",
+            Default = false,
+            Required = false,
+            HelpText = "Pass in this flag to allow tests to run in your mount process")]
+        public bool TestMode { get; set; }
 
         public bool SkipMountedCheck { get; set; }
         public bool SkipVersionCheck { get; set; }
@@ -288,7 +294,8 @@ namespace GVFS.CommandLine
                     ParamPrefix + GVFSConstants.VerbParameters.Mount.Keywords,
                     this.KeywordsCsv,
                     ParamPrefix + GVFSConstants.VerbParameters.Mount.StartedByService,
-                    this.StartedByService.ToString()
+                    this.StartedByService.ToString(),
+                    this.TestMode ? ParamPrefix +  GVFSConstants.VerbParameters.Mount.TestMode : string.Empty
                 });
 
             return GVFSEnlistment.WaitUntilMounted(enlistment.EnlistmentRoot, this.Unattended, out errorMessage);
