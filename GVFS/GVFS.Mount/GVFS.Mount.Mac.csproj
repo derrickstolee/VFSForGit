@@ -22,6 +22,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\GVFS.Mount.Tests\GVFS.Mount.Tests.csproj" />
     <ProjectReference Include="..\GVFS.Platform.Mac\GVFS.Platform.Mac.csproj" />
   </ItemGroup>
 

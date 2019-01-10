@@ -93,6 +93,10 @@
       <Project>{374bf1e5-0b2d-4d4a-bd5e-4212299def09}</Project>
       <Name>GVFS.Common</Name>
     </ProjectReference>
+    <ProjectReference Include="..\GVFS.Mount.Tests\GVFS.Mount.Tests.csproj">
+      <Project>{9ea6ff63-6bb0-4440-9bfb-0ae79a8f9ba9}</Project>
+      <Name>GVFS.Mount.Tests</Name>
+    </ProjectReference>
     <ProjectReference Include="..\GVFS.Platform.Windows\GVFS.Platform.Windows.csproj">
       <Project>{4ce404e7-d3fc-471c-993c-64615861ea63}</Project>
       <Name>GVFS.Platform.Windows</Name>

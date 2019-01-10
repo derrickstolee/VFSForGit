@@ -5,6 +5,7 @@ using GVFS.Common.Http;
 using GVFS.Common.Maintenance;
 using GVFS.Common.NamedPipes;
 using GVFS.Common.Tracing;
+using GVFS.Mount.Tests;
 using GVFS.PlatformLoader;
 using GVFS.Virtualization;
 using GVFS.Virtualization.FileSystem;
@@ -150,6 +151,55 @@ namespace GVFS.Mount
             }
         }
 
+        protected virtual void HandleRequest(ITracer tracer, string request, NamedPipeServer.Connection connection)
+        {
+            NamedPipeMessages.Message message = NamedPipeMessages.Message.FromString(request);
+
+            switch (message.Header)
+            {
+                case NamedPipeMessages.GetStatus.Request:
+                    this.HandleGetStatusRequest(connection);
+                    break;
+
+                case NamedPipeMessages.Unmount.Request:
+                    this.HandleUnmountRequest(connection);
+                    break;
+
+                case NamedPipeMessages.AcquireLock.AcquireRequest:
+                    this.HandleLockRequest(message.Body, connection);
+                    break;
+
+                case NamedPipeMessages.ReleaseLock.Request:
+                    this.HandleReleaseLockRequest(message.Body, connection);
+                    break;
+
+                case NamedPipeMessages.DownloadObject.DownloadRequest:
+                    this.HandleDownloadObjectRequest(message, connection);
+                    break;
+
+                case NamedPipeMessages.ModifiedPaths.ListRequest:
+                    this.HandleModifiedPathsListRequest(message, connection);
+                    break;
+
+                case NamedPipeMessages.PostIndexChanged.NotificationRequest:
+                    this.HandlePostIndexChangedRequest(message, connection);
+                    break;
+
+                case NamedPipeMessages.RunPostFetchJob.PostFetchJob:
+                    this.HandlePostFetchJobRequest(message, connection);
+                    break;
+
+                default:
+                    EventMetadata metadata = new EventMetadata();
+                    metadata.Add("Area", "Mount");
+                    metadata.Add("Header", message.Header);
+                    this.tracer.RelatedError(metadata, "HandleRequest: Unknown request");
+
+                    connection.TrySendResponse(NamedPipeMessages.UnknownRequest);
+                    break;
+            }
+        }
+
         private GVFSContext CreateContext()
         {
             PhysicalFileSystem fileSystem = new PhysicalFileSystem();
@@ -221,59 +271,6 @@ namespace GVFS.Mount
             {
                 this.FailMountAndExit(reportMessage + " " + e.ToString());
                 throw;
-            }
-        }
-
-        private void HandleRequest(ITracer tracer, string request, NamedPipeServer.Connection connection)
-        {
-            NamedPipeMessages.Message message = NamedPipeMessages.Message.FromString(request);
-
-            switch (message.Header)
-            {
-                case NamedPipeMessages.GetStatus.Request:
-                    this.HandleGetStatusRequest(connection);
-                    break;
-
-                case NamedPipeMessages.Unmount.Request:
-                    this.HandleUnmountRequest(connection);
-                    break;
-
-                case NamedPipeMessages.AcquireLock.AcquireRequest:
-                    this.HandleLockRequest(message.Body, connection);
-                    break;
-
-                case NamedPipeMessages.ReleaseLock.Request:
-                    this.HandleReleaseLockRequest(message.Body, connection);
-                    break;
-
-                case NamedPipeMessages.DownloadObject.DownloadRequest:
-                    this.HandleDownloadObjectRequest(message, connection);
-                    break;
-
-                case NamedPipeMessages.ModifiedPaths.ListRequest:
-                    this.HandleModifiedPathsListRequest(message, connection);
-                    break;
-
-                case NamedPipeMessages.PostIndexChanged.NotificationRequest:
-                    this.HandlePostIndexChangedRequest(message, connection);
-                    break;
-
-                case NamedPipeMessages.RunPostFetchJob.PostFetchJob:
-                    this.HandlePostFetchJobRequest(message, connection);
-                    break;
-
-                case NamedPipeMessages.RunTest.RunTestMessage:
-                    this.HandleRunTestRequest(message, connection);
-                    break;
-
-                default:
-                    EventMetadata metadata = new EventMetadata();
-                    metadata.Add("Area", "Mount");
-                    metadata.Add("Header", message.Header);
-                    this.tracer.RelatedError(metadata, "HandleRequest: Unknown request");
-
-                    connection.TrySendResponse(NamedPipeMessages.UnknownRequest);
-                    break;
             }
         }
 
@@ -457,7 +454,7 @@ namespace GVFS.Mount
 
         private void HandleRunTestRequest(NamedPipeMessages.Message message, NamedPipeServer.Connection connection)
         {
-            NamedPipeMessages.RunTest.Request request = new NamedPipeMessages.RunTest.Request(message);
+            NamedPipeMessages.RunTest.Request request = NamedPipeMessages.RunTest.Request.FromMessage(message);
 
             this.tracer.RelatedInfo("Received RunTest request with body {0}", message.Body);
 
@@ -474,7 +471,9 @@ namespace GVFS.Mount
             {
                 // Run the test
                 response.TestRan = true;
-                response.TestSucceeded = false;
+                response.TestSucceeded = TestRunner.RunTest(request.TestName, request.TestData, out string error, out string data);
+                response.TestError = error;
+                response.TestData = data;
             }
 
             connection.TrySendResponse(response.ToJson());

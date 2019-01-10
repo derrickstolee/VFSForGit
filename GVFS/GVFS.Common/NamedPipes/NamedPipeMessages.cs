@@ -231,17 +231,20 @@ namespace GVFS.Common.NamedPipes
 
             public class Request
             {
-                public Request(string testName)
+                public Request(string testName, string data = null)
                 {
                     this.TestName = testName;
-                }
-
-                public Request(Message message)
-                {
-                    this.TestName = message.Body;
+                    this.TestData = data;
                 }
 
                 public string TestName { get; set; }
+
+                public string TestData { get; set; }
+
+                public static Request FromMessage(Message message)
+                {
+                    return JsonConvert.DeserializeObject<Request>(message.Body);
+                }
 
                 public Message CreateMessage()
                 {

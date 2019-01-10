@@ -126,6 +126,7 @@ DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Common.pdb"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.GVFlt.pdb"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Virtualization.pdb"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Platform.Windows.pdb"
+DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Mount.Tests.pdb"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.pdb"
 
 ; GVFS.Service.UI Files
@@ -146,6 +147,7 @@ DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\SQLitePCLRaw.core.dll
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\SQLitePCLRaw.provider.e_sqlite3.dll"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\x64\e_sqlite3.dll"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Common.dll"
+DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Mount.Tests.dll"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.GVFlt.dll"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Virtualization.dll"
 DestDir: "{app}"; Flags: ignoreversion; Source:"{#GVFSDir}\GVFS.Platform.Windows.dll"
