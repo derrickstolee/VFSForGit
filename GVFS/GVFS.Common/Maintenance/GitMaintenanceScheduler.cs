@@ -62,19 +62,19 @@ namespace GVFS.Common.Maintenance
                     state: null,
                     dueTime: this.prefetchPeriod,
                     period: this.prefetchPeriod));
-
-                this.stepTimers.Add(new Timer(
-                    (state) => this.queue.TryEnqueue(new LooseObjectsStep(this.context)),
-                    state: null,
-                    dueTime: this.looseObjectsDueTime,
-                    period: this.looseObjectsPeriod));
-
-                this.stepTimers.Add(new Timer(
-                    (state) => this.queue.TryEnqueue(new PackfileMaintenanceStep(this.context)),
-                    state: null,
-                    dueTime: this.packfileDueTime,
-                    period: this.packfilePeriod));
             }
+
+            this.stepTimers.Add(new Timer(
+                (state) => this.queue.TryEnqueue(new LooseObjectsStep(this.context)),
+                state: null,
+                dueTime: this.looseObjectsDueTime,
+                period: this.looseObjectsPeriod));
+
+            this.stepTimers.Add(new Timer(
+                (state) => this.queue.TryEnqueue(new LibGit2PoolPerformanceTestStep(this.context)),
+                state: null,
+                dueTime: TimeSpan.FromSeconds(15),
+                period: TimeSpan.FromMinutes(1)));
         }
     }
 }

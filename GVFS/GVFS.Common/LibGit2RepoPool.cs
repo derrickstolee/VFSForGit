@@ -37,6 +37,8 @@ namespace GVFS.Common
                 period: this.sharedRepositoryDisposalPeriod);
         }
 
+        public int NumActiveRepos => this.activeCallers;
+
         public void Dispose()
         {
             this.stopped = true;
