@@ -428,8 +428,14 @@ namespace GVFS.Mount
                         response = new NamedPipeMessages.DownloadObject.Response(NamedPipeMessages.DownloadObject.DownloadFailed);
                     }
 
+                    long msDownload = downloadTime.ElapsedMilliseconds;
                     bool isBlob;
                     this.context.Repository.TryGetIsBlob(objectSha, out isBlob);
+
+                    long msIsBlob = downloadTime.ElapsedMilliseconds - msDownload;
+
+                    this.tracer.RelatedInfo($"msDownload: {msDownload}, msIsBlob: {msIsBlob}");
+
                     this.context.Repository.GVFSLock.Stats.RecordObjectDownload(isBlob, downloadTime.ElapsedMilliseconds);
                 }
             }
