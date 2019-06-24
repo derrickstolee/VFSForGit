@@ -3,8 +3,6 @@ using GVFS.FunctionalTests.Should;
 using GVFS.FunctionalTests.Tools;
 using GVFS.Tests.Should;
 using NUnit.Framework;
-using NUnit.Framework.Interfaces;
-using System;
 using System.IO;
 using System.Linq;
 

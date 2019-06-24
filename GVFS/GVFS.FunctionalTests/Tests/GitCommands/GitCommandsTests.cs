@@ -12,11 +12,11 @@ namespace GVFS.FunctionalTests.Tests.GitCommands
     [Category(Categories.GitCommands)]
     public class GitCommandsTests : GitRepoTests
     {
+        protected const string TopLevelFolderToCreate = "level1";
         private const string EncodingFileFolder = "FilenameEncoding";
         private const string EncodingFilename = "ريلٌأكتوبرûمارسأغسطسºٰٰۂْٗ۵ريلٌأك.txt";
         private const string ContentWhenEditingFile = "// Adding a comment to the file";
         private const string UnknownTestName = "Unknown";
-        private const string TopLevelFolderToCreate = "level1";
         private const string SubFolderToCreate = "level2";
 
         private static readonly string EditFilePath = Path.Combine("GVFS", "GVFS.Common", "GVFSContext.cs");
