@@ -20,7 +20,6 @@
 		<key>BundleOverwriteAction</key>
 		<string>upgrade</string>
 		<key>RootRelativeBundlePath</key>
-		<string>Library/Extensions/PrjFSKext.kext</string>
 	</dict>
 </array>
 </plist>
