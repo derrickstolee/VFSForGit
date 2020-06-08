@@ -22,22 +22,23 @@ reoccurring. Please make sure you are on the latest version using `gvfs upgrade`
 before raising an issue. Please also keep your version of Windows updated
 as that is the only way to get updates to the ProjFS filesystem driver.
 
-### TRY THIS FIRST: `gvfs repair`
+### TRY THESE STEPS FIRST
 
-Some known issues can get your enlistment into a bad state. Running
+1. **Upgrade.** Please double-check that you are on a recent release of VFS for Git.
+   Go to [the releases page](https://github.com/microsoft/vfsforgit/releases)
+   and select the top release or pre-release.
 
-`gvfs repair` will detect known issues and the output will mention if the
-issue is actionable or not. Then, `gvfs repair --confirm` will actually
-make the changes it thinks are necessary.
+2. **Run `gvfs repair`.** Some known issues can get your enlistment into a
+   bad state. Running `gvfs repair` will detect known issues and the output
+   will mention if the issue is actionable or not. Then, `gvfs repair --confirm`
+   will actually make the changes it thinks are necessary. If `gvfs repair`
+   detects a problem but says it cannot fix the problem, then that's an
+   excellent message to include when creating an issue.
 
-If `gvfs repair` detects a problem but says it cannot fix the problem,
-then that's an excellent message to include when creating an issue.
-
-### TRY THIS NEXT: `gvfs unmount`, `gvfs mount`, or restart
-
-Sometimes the `GVFS.Mount` process gets in a bad state and simply needs to
-restart to auto-heal. Since VFS for Git also interacts directly with the
-ProjFS filesystem driver, sometimes a system restart can help.
+3. **Run `gvfs unmount`, `gvfs mount`, or restart.** Sometimes the
+   `GVFS.Mount` process gets in a bad state and simply needs to
+  restart to auto-heal. Since VFS for Git also interacts directly with the
+  ProjFS filesystem driver, sometimes a system restart can help.
 
 ### 404 Errors, or "The Git repository with name or identifier X does not exist..."
 
