@@ -40,18 +40,32 @@ as that is the only way to get updates to the ProjFS filesystem driver.
   restart to auto-heal. Since VFS for Git also interacts directly with the
   ProjFS filesystem driver, sometimes a system restart can help.
 
-### 404 Errors, or "The Git repository with name or identifier X does not exist..."
+### Authentication issues
 
-If your `gvfs clone <url>` command fails with this error, then check if you
-can access `<url>` in a web browser. If you cannot see the repository in the
-web, then you do not have permissions to read that repository. These issues
-cannot be resolved by the VFS for Git team and must be done by your repository
-administrators.
+**Symptom:** `gvfs clone <url>` fails with 404 errors or
+`The Git repository with name or identifier X does not exist...`
 
-If you _can_ see the repository in the web, then likely you have a stale
-credential in your credential manager that needs updating. VFS for Git
-_should_ attempt to renew your credential. If it does not, then go to
-Windows Credential Manager and delete the Git credential for that URL.
+**Fix:** Try the following:
+
+1. Check if you can access `<url>` in a web browser. If you cannot see the
+  repository in the web, then you do not have permissions to read that repository.
+  These issues cannot be resolved by the VFS for Git team and must be done
+  by your repository administrators.
+
+2. If you _can_ see the repository in the web, then likely you have a stale
+  credential in your credential manager that needs updating. VFS for Git
+  _should_ attempt to renew your credential. If it does not, then go to
+  Windows Credential Manager and delete the Git credential for that URL.
+
+![Remove a credential](img/delete-cred-windows.png)
+
+**Symptom:** Clone or mount fails with `fatal: could not read Username for 'https://<org>.visualstudio.com': terminal prompts disabled`
+
+**Fix:** The URL pattern `https://<org>.visualstudio.com` is an old way of interacting with Azure Repos. The new URL pattern is `https://<org>@dev.azure.com/<org>/`. Please recreate your enlistment using the URL from Azure Repos by clicking the "Clone" button and copying the HTTPS URL as follows:
+
+![Clone button](img/azure-repos-clone-button.png)
+
+![Copy URL](img/azure-repos-clone-copy-url.png)
 
 ### Upgrade issues
 
