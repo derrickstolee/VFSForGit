@@ -27,7 +27,7 @@ IF NOT EXIST "c:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0" (
 
 :: Use vswhere to find the latest VS installation with the msbuild component.
 :: See https://github.com/Microsoft/vswhere/wiki/Find-MSBuild
-for /f "usebackq tokens=*" %%i in (`%vswhere% -all -prerelease -latest -products * -requires Microsoft.Component.MSBuild Microsoft.VisualStudio.Workload.ManagedDesktop Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Workload.NetCoreTools Microsoft.Net.Core.Component.SDK.2.1 -find MSBuild\**\Bin\amd64\MSBuild.exe`) do (
+for /f "usebackq tokens=*" %%i in (`%vswhere% -all -prerelease -latest -products * -find MSBuild\**\Bin\amd64\MSBuild.exe`) do (
  set msbuild="%%i"
 )
 
