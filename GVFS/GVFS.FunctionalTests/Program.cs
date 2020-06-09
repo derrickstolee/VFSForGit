@@ -23,7 +23,7 @@ namespace GVFS.FunctionalTests
                 GVFSTestConfig.NoSharedCache = true;
             }
 
-            if (runner.HasCustomArg("--test-gvfs-on-path"))
+            if (runner.HasCustomArg("--test-gvfs-on-path") || runner.HasCustomArg("--upgrade"))
             {
                 Console.WriteLine("Running tests against GVFS on path");
                 GVFSTestConfig.TestGVFSOnPath = true;
