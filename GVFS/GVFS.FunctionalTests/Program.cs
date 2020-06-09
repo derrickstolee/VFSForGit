@@ -38,7 +38,7 @@ namespace GVFS.FunctionalTests
             GVFSTestConfig.LocalCacheRoot = runner.GetCustomArgWithParam("--shared-gvfs-cache-root");
 
             HashSet<string> includeCategories = new HashSet<string>();
-            HashSet<string> excludeCategories = new HashSet<string>();
+            HashSet<string> excludeCategories = new HashSet<string>() { Categories.Upgrade };
 
             if (runner.HasCustomArg("--full-suite"))
             {
@@ -114,6 +114,19 @@ namespace GVFS.FunctionalTests
                 // Windows excludes.
                 excludeCategories.Add(Categories.MacOnly);
                 excludeCategories.Add(Categories.POSIXOnly);
+            }
+
+            if (runner.HasCustomArg("--upgrade"))
+            {
+                if (runner.HasCustomArg("--windows-only"))
+                {
+                    // This is the second run. Skip the test.
+                    Environment.Exit(0);
+                }
+
+                excludeCategories.Clear();
+                includeCategories.Clear();
+                includeCategories.Add(Categories.Upgrade);
             }
 
             GVFSTestConfig.DotGVFSRoot = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? ".vfsforgit" : ".gvfs";
